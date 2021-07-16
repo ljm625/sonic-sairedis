@@ -3653,15 +3653,15 @@ void processFlexCounterEvent(
             }
             else if (objectType == SAI_OBJECT_TYPE_POLICER && field == POLICER_COUNTER_ID_LIST)
             {
-                std::vector<sai_switch_stat_t> switchCounterIds;
+                std::vector<sai_policer_stat_t> policerCounterIds;
                 for (const auto &str : idStrings)
                 {
-                    sai_switch_stat_t stat;
+                    sai_policer_stat_t stat;
                     sai_deserialize_switch_stat(str.c_str(), &stat);
-                    switchCounterIds.push_back(stat);
+                    policerCounterIds.push_back(stat);
                 }
 
-                FlexCounter::setSwitchDebugCounterList(vid, rid, groupName, switchCounterIds);
+                FlexCounter::setPolicerCounterList(vid, rid, groupName, switchCounterIds);
             }
 
             else if (objectType == SAI_OBJECT_TYPE_BUFFER_POOL && field == BUFFER_POOL_COUNTER_ID_LIST)
