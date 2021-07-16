@@ -3504,6 +3504,7 @@ void processFlexCounterEvent(
 
     sai_object_type_t objectType = redis_sai_object_type_query(vid); // VID and RID will have the same object type
     std::string  objectTypeStr = sai_serialize_object_type(objectType);
+    SWSS_LOG_INFO("Flex Counters process request type %s %s %s", objectTypeStr,key.c_str(),op);
 
     if (op == DEL_COMMAND)
     {
@@ -3544,6 +3545,8 @@ void processFlexCounterEvent(
     }
 
     const auto values = kfvFieldsValues(kco);
+    SWSS_LOG_INFO("Flex Counters process request type %s %s %s", objectTypeStr,key.c_str(),values.c_str());
+
     std::vector<std::string> counterIds;
     std::string statsMode;
     for (const auto& valuePair : values)
