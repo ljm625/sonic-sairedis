@@ -3532,6 +3532,11 @@ void processFlexCounterEvent(
         {
             FlexCounter::removeSwitchDebugCounters(vid, groupName);
         }
+        else if (objectType == SAI_OBJECT_TYPE_POLICER)
+        {
+            FlexCounter::removePolicerCounters(vid, groupName);
+        }
+
         else
         {
             SWSS_LOG_ERROR("Object type for removal not supported, %s", objectTypeStr.c_str());
@@ -3646,6 +3651,19 @@ void processFlexCounterEvent(
 
                 FlexCounter::setSwitchDebugCounterList(vid, rid, groupName, switchCounterIds);
             }
+            else if (objectType == SAI_OBJECT_TYPE_POLICER && field == POLICER_COUNTER_ID_LIST)
+            {
+                std::vector<sai_switch_stat_t> switchCounterIds;
+                for (const auto &str : idStrings)
+                {
+                    sai_switch_stat_t stat;
+                    sai_deserialize_switch_stat(str.c_str(), &stat);
+                    switchCounterIds.push_back(stat);
+                }
+
+                FlexCounter::setSwitchDebugCounterList(vid, rid, groupName, switchCounterIds);
+            }
+
             else if (objectType == SAI_OBJECT_TYPE_BUFFER_POOL && field == BUFFER_POOL_COUNTER_ID_LIST)
             {
                 counterIds = idStrings;

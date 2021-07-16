@@ -8,6 +8,7 @@ static std::map<std::string, std::shared_ptr<FlexCounter>> g_flex_counters_map;
 // List with supported counters
 static std::set<sai_port_stat_t> supportedPortCounters;
 static std::set<sai_queue_stat_t> supportedQueueCounters;
+static std::set<sai_policer_stat_t> supportedPolicerCounters;
 static std::set<sai_ingress_priority_group_stat_t> supportedPriorityGroupCounters;
 static std::set<sai_router_interface_stat_t> supportedRifCounters;
 static std::set<sai_buffer_pool_stat_t> supportedBufferPoolCounters;
@@ -533,6 +534,62 @@ void FlexCounter::setPriorityGroupAttrList(
     }
 }
 
+void FlexCounter::setPolicerCounterList(
+        _In_ sai_object_id_t policerVid,
+        _In_ sai_object_id_t policerId,
+        _In_ std::string instanceId,
+        _In_ const std::vector<sai_policer_stat_t> &counterIds)
+{
+    SWSS_LOG_ENTER();
+
+    FlexCounter &fc = getInstance(instanceId);
+
+    fc.saiUpdateSupportedPolicerCounters(priorityGroupId, counterIds);
+
+    // Remove unsupported counters
+    std::vector<sai_policer_stat_t> supportedIds;
+    for (auto &counter : counterIds)
+    {
+        if (fc.isPolicerCounterSupported(counter))
+        {
+            supportedIds.push_back(counter);
+        }
+    }
+
+    if (supportedIds.size() == 0)
+    {
+        SWSS_LOG_NOTICE("Switch %s does not have supported policer counters", sai_serialize_object_id(policerId).c_str());
+
+        // Remove flex counter if all counter IDs and plugins are unregistered
+        if (fc.isEmpty())
+        {
+            removeInstance(instanceId);
+        }
+        return;
+    }
+
+    std::lock_guard<std::mutex> lkMgr(fc.m_mtx);
+
+    auto it = fc.m_policerCounterIdsMap.find(policerVid);
+    if (it != fc.m_policerCounterIdsMap.end())
+    {
+        it->second->policerCounterIds = supportedIds;
+        return;
+    }
+
+    auto policerCounterIds = std::make_shared<PolicerCounterIds>(policerId, supportedIds);
+    fc.m_policerCounterIdsMap.emplace(policerVid, policerCounterIds);
+
+    fc.addCollectCountersHandler(POLICER_COUNTER_ID_LIST, &FlexCounter::collectPolicerCounters);
+
+    // Start flex counter thread in case it was not running due to empty counter IDs map
+    if (fc.m_pollInterval > 0)
+    {
+        fc.startFlexCounterThread();
+    }
+}
+
+
 void FlexCounter::setRifCounterList(
         _In_ sai_object_id_t rifVid,
         _In_ sai_object_id_t rifId,
@@ -946,6 +1003,43 @@ void FlexCounter::removeSwitchDebugCounters(
     }
 }
 
+void FlexCounter::removePolicerCounters(
+        _In_ sai_object_id_t policerVid,
+        _In_ std::string instanceId)
+{
+    SWSS_LOG_ENTER();
+
+    bool found = false;
+    FlexCounter &fc = getInstance(instanceId);
+
+    std::unique_lock<std::mutex> lkMgr(fc.m_mtx);
+
+    auto counterIter = fc.m_policerCounterIdsMap.find(policerVid);
+    if (counterIter != fc.m_policerCounterIdsMap.end())
+    {
+        fc.m_policerCounterIdsMap.erase(counterIter);
+        if (fc.m_policerCounterIdsMap.empty())
+        {
+            fc.removeCollectCountersHandler(POLICER_COUNTER_ID_LIST);
+        }
+        found = true;
+    }
+
+    if (!found)
+    {
+        SWSS_LOG_NOTICE("Trying to remove nonexisting policer from flex counter 0x%" PRIx64, policerVid);
+        return;
+    }
+
+    // Remove flex counter if all counter IDs and plugins are unregistered
+    if (fc.isEmpty())
+    {
+        lkMgr.unlock();
+        removeInstance(instanceId);
+    }
+}
+
+
 void FlexCounter::addPortCounterPlugin(
         _In_ std::string sha,
         _In_ std::string instanceId)
@@ -1140,6 +1234,14 @@ bool FlexCounter::isPriorityGroupCounterSupported(sai_ingress_priority_group_sta
 
     return supportedPriorityGroupCounters.count(counter) != 0;
 }
+
+bool FlexCounter::isPolicerCounterSupported(sai_policer_stat_t counter) const
+{
+    SWSS_LOG_ENTER();
+
+    return supportedPolicerCounters.count(counter) != 0;
+}
+
 
 bool FlexCounter::isRifCounterSupported(sai_router_interface_stat_t counter) const
 {
@@ -1629,6 +1731,64 @@ void FlexCounter::collectBufferPoolCounters(_In_ swss::Table &countersTable)
     }
 }
 
+void FlexCounter::collectPolicerCounters(_In_ swss::Table &countersTable)
+{
+    SWSS_LOG_ENTER();
+
+    // Collect stats for every registered policer
+    for (const auto &kv: m_policerCounterIdsMap)
+    {
+        // TODO: Need double check By jiaminli
+        const auto &policerVid = kv.first;
+        const auto &policerId = kv.second->policerId;
+        const auto &policerCounterIds = kv.second->policerCounterIds;
+
+        std::vector<uint64_t> policerStats(policerCounterIds.size());
+
+        // Get Policer stats
+        sai_status_t status = -1;
+        // TODO: replace if with get_ingress_priority_group_stats_ext() call when it is fully supported
+        status = sai_metadata_sai_policer_api->get_policer_stats(
+                        policerId,
+                        static_cast<uint32_t>(policerCounterIds.size()),
+                        (const sai_stat_id_t *)policerCounterIds.data(),
+                        policerStats.data());
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            SWSS_LOG_ERROR("%s: failed to get %ld/%ld stats of Policer 0x%" PRIx64 ": %d", m_instanceId.c_str(), policerCounterIds.size(), policerStats.size(), policerVid, status);
+            continue;
+        }
+        // We don't support SAI_STATS_MODE_READ_AND_CLEAR on policer yet, so just do nothing. jiaminli
+
+        // if (m_statsMode == SAI_STATS_MODE_READ_AND_CLEAR){
+        //     status = sai_metadata_sai_buffer_api->clear_ingress_priority_group_stats(
+        //                     priorityGroupId,
+        //                     static_cast<uint32_t>(priorityGroupCounterIds.size()),
+        //                     (const sai_stat_id_t *)priorityGroupCounterIds.data());
+        //     if (status != SAI_STATUS_SUCCESS)
+        //     {
+        //         SWSS_LOG_ERROR("%s: failed to clear %ld/%ld stats of PG 0x%" PRIx64 ": %d", m_instanceId.c_str(), priorityGroupCounterIds.size(), priorityGroupStats.size(), priorityGroupVid, status);
+        //         continue;
+        //     }
+        // }
+
+        // Push all counter values to a single vector
+        std::vector<swss::FieldValueTuple> values;
+
+        for (size_t i = 0; i != policerCounterIds.size(); i++)
+        {
+            const std::string &counterName = sai_serialize_policer_stat(policerCounterIds[i]);
+            values.emplace_back(counterName, std::to_string(policerStats[i]));
+        }
+
+        // Write counters to DB
+        std::string policerVidStr = sai_serialize_object_id(policerVid);
+
+        countersTable.set(policerVidStr, values, "");
+    }
+}
+
+
 void FlexCounter::runPlugins(
         _In_ swss::DBConnector& db)
 {
@@ -1798,6 +1958,33 @@ void FlexCounter::saiUpdateSupportedPortCounters(sai_object_id_t portId)
         supportedPortCounters.insert(counter);
     }
 }
+
+
+void FlexCounter::saiUpdateSupportedPolicerCounters(sai_object_id_t policerId)
+{
+    SWSS_LOG_ENTER();
+
+    uint64_t value;
+    for (int cntr_id = SAI_POLICER_STAT_PACKETS; cntr_id <= SAI_POLICER_STAT_CUSTOM_RANGE_BASE; ++cntr_id)
+    {
+        sai_policer_stat_t counter = static_cast<sai_policer_stat_t>(cntr_id);
+
+        sai_status_t status = sai_metadata_sai_policer_api->get_policer_stats(policerId, 1, (const sai_stat_id_t *)&counter, &value);
+
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            SWSS_LOG_INFO("Counter %s is not supported on policer RID %s: %s",
+                    sai_serialize_policer_stat(counter).c_str(),
+                    sai_serialize_object_id(portId).c_str(),
+                    sai_serialize_status(status).c_str());
+
+            continue;
+        }
+
+        supportedPolicerCounters.insert(counter);
+    }
+}
+
 
 std::vector<sai_port_stat_t> FlexCounter::saiCheckSupportedPortDebugCounters(
     _In_ sai_object_id_t portId,
