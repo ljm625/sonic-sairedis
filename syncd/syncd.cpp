@@ -3545,7 +3545,6 @@ void processFlexCounterEvent(
     }
 
     const auto values = kfvFieldsValues(kco);
-    SWSS_LOG_INFO("Flex Counters process request type %s %s %s", objectTypeStr,key.c_str(),values.c_str());
 
     std::vector<std::string> counterIds;
     std::string statsMode;
@@ -3553,6 +3552,8 @@ void processFlexCounterEvent(
     {
         const auto field = fvField(valuePair);
         const auto value = fvValue(valuePair);
+
+        SWSS_LOG_INFO("Flex Counters process request type %s %s %s %s", objectTypeStr.c_str(),key.c_str(),field.c_str(),value.c_str());
 
         if (op == SET_COMMAND)
         {
