@@ -90,6 +90,9 @@ std::string sai_serialize_port_stat(
 std::string sai_serialize_switch_stat(
         _In_ const sai_switch_stat_t counter);
 
+std::string sai_serialize_policer_stat(
+        _In_ const sai_policer_stat_t counter);
+
 std::string sai_serialize_port_pool_stat(
         _In_ const sai_port_pool_stat_t counter);
 
