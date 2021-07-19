@@ -55,7 +55,7 @@ class FlexCounter
                 _In_ sai_object_id_t switchId,
                 _In_ std::string instanceId,
                 _In_ const std::vector<sai_switch_stat_t> &counterIds);
-        static void FlexCounter::setPolicerCounterList(
+        static void setPolicerCounterList(
                 _In_ sai_object_id_t policerVid,
                 _In_ sai_object_id_t policerId,
                 _In_ std::string instanceId,
@@ -98,7 +98,7 @@ class FlexCounter
         static void removeSwitchDebugCounters(
                 _In_ sai_object_id_t switchVid,
                 _In_ std::string instanceId);
-        static void FlexCounter::removePolicerCounters(
+        static void removePolicerCounters(
                 _In_ sai_object_id_t policerVid,
                 _In_ std::string instanceId);
 

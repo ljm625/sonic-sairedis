@@ -3660,11 +3660,11 @@ void processFlexCounterEvent(
                 for (const auto &str : idStrings)
                 {
                     sai_policer_stat_t stat;
-                    sai_deserialize_switch_stat(str.c_str(), &stat);
+                    sai_deserialize_policer_stat(str.c_str(), &stat);
                     policerCounterIds.push_back(stat);
                 }
 
-                FlexCounter::setPolicerCounterList(vid, rid, groupName, switchCounterIds);
+                FlexCounter::setPolicerCounterList(vid, rid, groupName, policerCounterIds);
             }
 
             else if (objectType == SAI_OBJECT_TYPE_BUFFER_POOL && field == BUFFER_POOL_COUNTER_ID_LIST)

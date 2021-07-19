@@ -544,7 +544,7 @@ void FlexCounter::setPolicerCounterList(
 
     FlexCounter &fc = getInstance(instanceId);
 
-    fc.saiUpdateSupportedPolicerCounters(policerId, counterIds);
+    fc.saiUpdateSupportedPolicerCounters(policerId);
 
     // Remove unsupported counters
     std::vector<sai_policer_stat_t> supportedIds;
