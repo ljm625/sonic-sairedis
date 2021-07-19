@@ -544,7 +544,7 @@ void FlexCounter::setPolicerCounterList(
 
     FlexCounter &fc = getInstance(instanceId);
 
-    fc.saiUpdateSupportedPolicerCounters(priorityGroupId, counterIds);
+    fc.saiUpdateSupportedPolicerCounters(policerId, counterIds);
 
     // Remove unsupported counters
     std::vector<sai_policer_stat_t> supportedIds;
@@ -1975,7 +1975,7 @@ void FlexCounter::saiUpdateSupportedPolicerCounters(sai_object_id_t policerId)
         {
             SWSS_LOG_INFO("Counter %s is not supported on policer RID %s: %s",
                     sai_serialize_policer_stat(counter).c_str(),
-                    sai_serialize_object_id(portId).c_str(),
+                    sai_serialize_object_id(policerId).c_str(),
                     sai_serialize_status(status).c_str());
 
             continue;
