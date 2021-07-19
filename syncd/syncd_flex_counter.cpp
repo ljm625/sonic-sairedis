@@ -70,6 +70,14 @@ FlexCounter::RifCounterIds::RifCounterIds(
     SWSS_LOG_ENTER();
 }
 
+FlexCounter::PolicerCounterIds::PolicerCounterIds(
+        _In_ sai_object_id_t policer,
+        _In_ const std::vector<sai_policer_stat_t> &policerIds):
+    policerId(policer), policerCounterIds(policerIds)
+{
+    SWSS_LOG_ENTER();
+}
+
 FlexCounter::BufferPoolCounterIds::BufferPoolCounterIds(
         _In_ sai_object_id_t bufferPool,
         _In_ const std::vector<sai_buffer_pool_stat_t> &bufferPoolIds,
