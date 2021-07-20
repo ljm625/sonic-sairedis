@@ -3408,6 +3408,7 @@ void processFlexCounterGroupEvent(
         const auto field = fvField(valuePair);
         const auto value = fvValue(valuePair);
 
+        SWSS_LOG_NOTICE("Flex Counters Group process request %s %s %s", groupName.c_str(),field.c_str(), value.c_str());
         if (op == SET_COMMAND)
         {
             if (field == POLL_INTERVAL_FIELD)

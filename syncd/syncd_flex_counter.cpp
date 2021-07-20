@@ -95,7 +95,10 @@ void FlexCounter::setPollInterval(
 
     FlexCounter &fc = getInstance(instanceId);
     std::lock_guard<std::mutex> lkMgr(fc.m_mtx);
+
+    SWSS_LOG_NOTICE("Updating Flex counter poll interval %s %d before: %d",instanceId.c_str(),pollInterval,fc.m_pollInterval);
     fc.m_pollInterval = pollInterval;
+    SWSS_LOG_NOTICE("Updated Flex counter poll interval %s %d",instanceId.c_str(),pollInterval);
     if (pollInterval > 0)
     {
         fc.startFlexCounterThread();
@@ -108,16 +111,19 @@ void FlexCounter::updateFlexCounterStatus(
 {
     SWSS_LOG_ENTER();
 
+    SWSS_LOG_NOTICE("Updating Flex counter enable status %s",instanceId.c_str());
     FlexCounter &fc = getInstance(instanceId);
     if (status == "enable")
     {
         std::lock_guard<std::mutex> lkMgr(fc.m_mtx);
         fc.m_enable = true;
+        SWSS_LOG_NOTICE("Enabled Flex counter %s",instanceId.c_str());
         fc.startFlexCounterThread();
     }
     else if (status == "disable")
     {
         std::lock_guard<std::mutex> lkMgr(fc.m_mtx);
+        SWSS_LOG_NOTICE("Disabled Flex counter %s",instanceId.c_str());
         fc.m_enable = false;
     }
     else
@@ -1214,7 +1220,8 @@ bool FlexCounter::allIdsEmpty()
            m_portDebugCounterIdsMap.empty() &&
            m_rifCounterIdsMap.empty() &&
            m_bufferPoolCounterIdsMap.empty() &&
-           m_switchDebugCounterIdsMap.empty();
+           m_switchDebugCounterIdsMap.empty() &&
+           m_policerCounterIdsMap.empty();
 }
 
 bool FlexCounter::allPluginsEmpty()
@@ -1869,6 +1876,8 @@ void FlexCounter::runPlugins(
 void FlexCounter::flexCounterThread(void)
 {
     SWSS_LOG_ENTER();
+    SWSS_LOG_NOTICE("Flex counter thread running %s",m_instanceId.c_str());
+
 
     swss::DBConnector db("COUNTERS_DB", 0);
     swss::RedisPipeline pipeline(&db);
@@ -1880,9 +1889,15 @@ void FlexCounter::flexCounterThread(void)
 
         std::unique_lock<std::mutex> lkMgr(m_mtx);
 
+
+
         if (!m_runFlexCounterThread)
         {
+            SWSS_LOG_NOTICE("Flex counter thread %s exited because m_runFlexCounterThread",m_instanceId.c_str());
             return;
+        }
+        if(!m_enable){
+            SWSS_LOG_NOTICE("Flex counter thread %s is not enabled",m_instanceId.c_str());
         }
         while (!m_enable || allIdsEmpty() || (m_pollInterval == 0))
         {
@@ -1893,6 +1908,7 @@ void FlexCounter::flexCounterThread(void)
             m_pollCond.wait(lkMgr);
         }
 
+        SWSS_LOG_NOTICE("Flex counter thread %s start collection counters",m_instanceId.c_str());
         collectCounters(countersTable);
         runPlugins(db);
 
