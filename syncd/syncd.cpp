@@ -3657,10 +3657,12 @@ void processFlexCounterEvent(
             }
             else if (objectType == SAI_OBJECT_TYPE_POLICER && field == POLICER_COUNTER_ID_LIST)
             {
+                SWSS_LOG_NOTICE("Creating Policer Counter");
                 std::vector<sai_policer_stat_t> policerCounterIds;
                 for (const auto &str : idStrings)
                 {
                     sai_policer_stat_t stat;
+                    SWSS_LOG_NOTICE("Policer Counter %s", str.c_str());
                     sai_deserialize_policer_stat(str.c_str(), &stat);
                     policerCounterIds.push_back(stat);
                 }

@@ -549,6 +549,7 @@ void FlexCounter::setPolicerCounterList(
         _In_ const std::vector<sai_policer_stat_t> &counterIds)
 {
     SWSS_LOG_ENTER();
+    SWSS_LOG_NOTICE("Start setting Policer vid %s id %s %s to list",sai_serialize_object_id(policerVid).c_str(),sai_serialize_object_id(policerId).c_str(),instanceId.c_str());
 
     FlexCounter &fc = getInstance(instanceId);
 
@@ -561,6 +562,7 @@ void FlexCounter::setPolicerCounterList(
         if (fc.isPolicerCounterSupported(counter))
         {
             supportedIds.push_back(counter);
+            SWSS_LOG_NOTICE("Policer Adding supported counter %s to list",sai_serialize_policer_stat(counter).c_str());
         }
     }
 
@@ -587,12 +589,15 @@ void FlexCounter::setPolicerCounterList(
 
     auto policerCounterIds = std::make_shared<PolicerCounterIds>(policerId, supportedIds);
     fc.m_policerCounterIdsMap.emplace(policerVid, policerCounterIds);
+    
+    SWSS_LOG_NOTICE("Adding Policer to collect handler");
 
     fc.addCollectCountersHandler(POLICER_COUNTER_ID_LIST, &FlexCounter::collectPolicerCounters);
 
     // Start flex counter thread in case it was not running due to empty counter IDs map
     if (fc.m_pollInterval > 0)
     {
+        SWSS_LOG_NOTICE("Start Policer collect handler");
         fc.startFlexCounterThread();
     }
 }
@@ -1743,6 +1748,7 @@ void FlexCounter::collectPolicerCounters(_In_ swss::Table &countersTable)
 {
     SWSS_LOG_ENTER();
 
+    SWSS_LOG_NOTICE("Collecting supported policer counters");
     // Collect stats for every registered policer
     for (const auto &kv: m_policerCounterIdsMap)
     {
@@ -1750,6 +1756,10 @@ void FlexCounter::collectPolicerCounters(_In_ swss::Table &countersTable)
         const auto &policerVid = kv.first;
         const auto &policerId = kv.second->policerId;
         const auto &policerCounterIds = kv.second->policerCounterIds;
+        std::string policerVidStrTmp = sai_serialize_object_id(policerVid);
+        std::string policerIdStrTmp = sai_serialize_object_id(policerId);
+
+        SWSS_LOG_NOTICE("Collecting policer counters %s id %s",policerVidStrTmp.c_str(),policerIdStrTmp.c_str());
 
         std::vector<uint64_t> policerStats(policerCounterIds.size());
 
@@ -1766,6 +1776,8 @@ void FlexCounter::collectPolicerCounters(_In_ swss::Table &countersTable)
             SWSS_LOG_ERROR("%s: failed to get %ld/%ld stats of Policer 0x%" PRIx64 ": %d", m_instanceId.c_str(), policerCounterIds.size(), policerStats.size(), policerVid, status);
             continue;
         }
+        SWSS_LOG_NOTICE("Collected supported policer counters");
+
         // We don't support SAI_STATS_MODE_READ_AND_CLEAR on policer yet, so just do nothing. jiaminli
 
         // if (m_statsMode == SAI_STATS_MODE_READ_AND_CLEAR){
@@ -1791,7 +1803,7 @@ void FlexCounter::collectPolicerCounters(_In_ swss::Table &countersTable)
 
         // Write counters to DB
         std::string policerVidStr = sai_serialize_object_id(policerVid);
-
+        SWSS_LOG_NOTICE("Write policer counters to redis %s",policerVidStr.c_str());
         countersTable.set(policerVidStr, values, "");
     }
 }
@@ -1972,6 +1984,8 @@ void FlexCounter::saiUpdateSupportedPolicerCounters(sai_object_id_t policerId)
 {
     SWSS_LOG_ENTER();
 
+    SWSS_LOG_NOTICE("Checking supported counters for Policer %s",sai_serialize_object_id(policerId).c_str());
+
     uint64_t value;
     for (int cntr_id = SAI_POLICER_STAT_PACKETS; cntr_id <= SAI_POLICER_STAT_CUSTOM_RANGE_BASE; ++cntr_id)
     {
@@ -1988,6 +2002,7 @@ void FlexCounter::saiUpdateSupportedPolicerCounters(sai_object_id_t policerId)
 
             continue;
         }
+        SWSS_LOG_NOTICE("Policer Counter %s supported for Policer %s",sai_serialize_policer_stat(counter).c_str(),sai_serialize_object_id(policerId).c_str());
 
         supportedPolicerCounters.insert(counter);
     }
