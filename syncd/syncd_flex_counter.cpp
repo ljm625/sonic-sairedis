@@ -1987,7 +1987,7 @@ void FlexCounter::saiUpdateSupportedPolicerCounters(sai_object_id_t policerId)
     SWSS_LOG_NOTICE("Checking supported counters for Policer %s",sai_serialize_object_id(policerId).c_str());
 
     uint64_t value;
-    for (int cntr_id = SAI_POLICER_STAT_PACKETS; cntr_id <= SAI_POLICER_STAT_CUSTOM_RANGE_BASE; ++cntr_id)
+    for (int cntr_id = SAI_POLICER_STAT_PACKETS; cntr_id <= SAI_POLICER_STAT_RED_BYTES; ++cntr_id)
     {
         sai_policer_stat_t counter = static_cast<sai_policer_stat_t>(cntr_id);
 
