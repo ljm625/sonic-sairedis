@@ -1785,19 +1785,23 @@ void FlexCounter::collectPolicerCounters(_In_ swss::Table &countersTable)
         }
         SWSS_LOG_NOTICE("Collected supported policer counters");
 
-        // We don't support SAI_STATS_MODE_READ_AND_CLEAR on policer yet, so just do nothing. jiaminli
+        if (m_statsMode == SAI_STATS_MODE_READ_AND_CLEAR){
+            SWSS_LOG_NOTICE("Staring Clear supported policer counters");
 
-        // if (m_statsMode == SAI_STATS_MODE_READ_AND_CLEAR){
-        //     status = sai_metadata_sai_buffer_api->clear_ingress_priority_group_stats(
-        //                     priorityGroupId,
-        //                     static_cast<uint32_t>(priorityGroupCounterIds.size()),
-        //                     (const sai_stat_id_t *)priorityGroupCounterIds.data());
-        //     if (status != SAI_STATUS_SUCCESS)
-        //     {
-        //         SWSS_LOG_ERROR("%s: failed to clear %ld/%ld stats of PG 0x%" PRIx64 ": %d", m_instanceId.c_str(), priorityGroupCounterIds.size(), priorityGroupStats.size(), priorityGroupVid, status);
-        //         continue;
-        //     }
-        // }
+            status = sai_metadata_sai_policer_api->clear_policer_stats(
+                            policerId,
+                            static_cast<uint32_t>(policerCounterIds.size()),
+                            (const sai_stat_id_t *)policerCounterIds.data());
+            if (status != SAI_STATUS_SUCCESS)
+            {
+                SWSS_LOG_ERROR("%s: failed to clear %ld/%ld stats of Policer 0x%" PRIx64 ": %d", m_instanceId.c_str(), policerCounterIds.size(), policerStats.size(), policerVid, status);
+                continue;
+            }
+            else{
+            SWSS_LOG_NOTICE("Cleared supported policer counters");
+
+            }
+        }
 
         // Push all counter values to a single vector
         std::vector<swss::FieldValueTuple> values;
