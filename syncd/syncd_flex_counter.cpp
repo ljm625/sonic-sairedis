@@ -1785,7 +1785,7 @@ void FlexCounter::collectPolicerCounters(_In_ swss::Table &countersTable)
         }
         SWSS_LOG_NOTICE("Collected supported policer counters");
 
-        if (m_statsMode == SAI_STATS_MODE_READ_AND_CLEAR){
+        // if (m_statsMode == SAI_STATS_MODE_READ_AND_CLEAR){
         SWSS_LOG_NOTICE("Staring Clear supported policer counters");
 
         status = sai_metadata_sai_policer_api->clear_policer_stats(
@@ -1801,7 +1801,7 @@ void FlexCounter::collectPolicerCounters(_In_ swss::Table &countersTable)
         SWSS_LOG_NOTICE("Cleared supported policer counters");
 
             }
-        }
+        // }
 
         // Push all counter values to a single vector
         std::vector<swss::FieldValueTuple> values;
