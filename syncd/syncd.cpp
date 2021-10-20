@@ -13,6 +13,7 @@
 
 extern "C" {
 #include <sai.h>
+#include <saiextensions.h>
 }
 
 #include <iostream>
