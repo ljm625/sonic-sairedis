@@ -3264,6 +3264,15 @@ sai_status_t processEvent(
              * will receive all notifications, but redis only those that were set.
              */
 
+            for (uint32_t i = 0; i < attr_count; i++)
+            {
+                sai_attribute_t &attr = attr_list[i];
+                SWSS_LOG_NOTICE("SAI_API_SWITCH SET/CREATE Attribute ID: %d", attr.id);
+
+            }
+
+
+
             check_notifications_pointers(attr_count, attr_list);
         }
 
