@@ -3159,7 +3159,7 @@ sai_status_t processEvent(
         const std::string &str_object_type = key.substr(0, key.find(":"));
         const std::string &str_object_id = key.substr(key.find(":") + 1);
 
-        SWSS_LOG_INFO("key: %s op: %s", key.c_str(), op.c_str());
+        SWSS_LOG_NOTICE("key: %s op: %s", key.c_str(), op.c_str());
 
         sai_common_api_t api = SAI_COMMON_API_MAX;
 
